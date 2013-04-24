@@ -16,84 +16,68 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-# Open urls
-
+from SubtitleBase import SubtitleBase
 import urllib
-import urllib2
-import re
-from lxml.html import fromstring
+from bs4 import UnicodeDammit
 
-class OpenSubtitles():
-    baseUrl = "http://www.opensubtitles.org/en/search2/sublanguageid"
-    dlUrl ="http://www.opensubtitles.org"
-    pattern = re.compile(r'\s+')
-    searchResults = {}
-    
-    def __init__(self):
-        pass
-    
-    def getSubtitle(self, movieName, language ):
-        self.movieName = movieName
-        self.language = language
-        html = self.getResponse(self.__buildUrl())
-        self.parseHtml(html)
-        
-    def parseHtml(self, html):
-        movies = []
-        results = html.xpath("//table[contains(@id, 'search_results')]")
-        try:
-            if results[0] :
-                table = html.xpath("//td[contains(@id, 'main')]")
-                for idx, item in enumerate(table):
-                    movie = item.xpath(".//a[@class='bnone']")
-                    movieName = movie[0].text_content()
-                    movieName = re.sub(self.pattern, '', movieName)
-                    movieUrl = movie[0].attrib["href"]
-                    result = self.doUrlStuff("%s%s" % (self.baseUrl , movieUrl), movieName)
-                    movies.append(result)
-        except IndexError:
-            download = html.xpath("//h1/a[@title='Download']")
-            movies.append({"title" : download[0].text_content(), "downloadUrl" : download[0].attrib["href"] });                 
-        
-        for idx, movie in enumerate(movies):
-            print "%d. %s" % (idx, movie["title"])
-            
-        choice = raw_input("Choose movie: ")
-        try:
-            self.download(movies[int(choice)]["downloadUrl"], movies[int(choice)]["title"])
-        except Exception, e: 
-            print "Error while saving file"
-            print e
-        
-    def download(self, url, title):
-        urllib.urlretrieve ("%s%s" % (self.dlUrl, url), "%s.%s" % (title, "zip"))
+class OpenSubtitles(SubtitleBase):
+    baseUrl = "http://www.opensubtitles.org"
+    searchUrl = "/en/search2/sublanguageid"
+    col9Headers = ["title", "lang", "cds", "uploaded", "download", "rating", "comments", "imdb", "uploader" ]
+    subtitleTypes = ["hearing_impaired", "hd", "from_trusted"]
 
-    def doUrlStuff(self, url, movieName = None):
-        html = self.getResponse(url)
-        row = html.xpath("//tr[contains(@id, 'name')]//td")
-        result = {}
-        for idx, item in enumerate(row):
+    def buildUrl(self):
+        return "%s%s-%s/moviename-%s" % (self.baseUrl, self.searchUrl, self.language, urllib.quote_plus(self.searchQuery))
+
+    def parseHtml(self, html, movies = []):
+        table = html.xpath("//tr[contains(@id, 'name')]")    
+        if len(table) is 0:
+            movies.append(self.parseSingleItem(html))
+            return movies
+    
+        for idx, item in enumerate(table):
+            numCols = len(item.getchildren())
+            if numCols is 9: 
+                data = self.parse9ColTd(item)
+                if len(data) : movies.append(data)
+            if numCols is 5:
+                self.parseHtml(self.getResponse("%s%s" % (self.baseUrl , item.xpath(".//a[@class='bnone']")[0].attrib["href"])), movies)
+    
+        return movies;
+
+    def parseSingleItem(self, html):
+        item = html.xpath("//h1/a[@title='Download']");
+        return {"title" : item[0].text_content(), "download" : item[0].attrib["href"]};   
+
+    def parseMovieName(self, item):
+        movieItem = item.find("strong")[0]
+        movieUrl = movieItem.attrib["href"]
+        movieName = self.strip(movieItem)
+        types = {}
+        rlsName = item.text_content()
+        for element in item.iterchildren():
+            try:
+                for type in self.subtitleTypes:
+                    if element.attrib["src"].find(type):
+                        types[type] = True
+            except KeyError:
+                pass
+            rlsName = rlsName.replace(element.text_content(), "")
+        
+        if rlsName.find(self.searchQuery) or movieName.find(self.searchQuery):
+            return {"title" : movieName, "url" : movieUrl, "rls" : rlsName, "types" : types}
+        return {}
+    
+    def parse9ColTd(self, item):
+        data = {}
+        for idx, td in enumerate(item.iterchildren()):
             if idx is 0:
-                if not movieName :
-                    movieName = item.text_content()
-                    movieName = re.sub(self.pattern, '', movieName);
-                result["title"] = movieName
-            if idx is 1:
-                lang = item.xpath(".//a")
-                result["language"] = lang[0].attrib["title"]
+                data = self.parseMovieName(td)
+            elif idx is 1:
+                data[self.col9Headers[idx]] = td[0].attrib["title"]
             elif idx is 4:
-                downloadUrl = item[0].attrib["href"];
-                result["downloadUrl"] = downloadUrl
-            elif idx is 7:
-                result["imdb"] = item.text_content()
-        return result;
-    
-    def __buildUrl(self):
-        movie = urllib.quote_plus(self.movieName)
-        url = "%s-%s/moviename-%s" % (self.baseUrl, self.language, movie)
-        return url
-
-    def getResponse(self, url):
-        response = urllib2.urlopen(url)
-        return fromstring(response.read())
+                data[self.col9Headers[idx]] = td[0].attrib["href"]
+            else:
+                data[self.col9Headers[idx]] = self.strip(td)
+        
+        return data if "title" in data else {}
