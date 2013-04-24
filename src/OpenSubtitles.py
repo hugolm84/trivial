@@ -25,7 +25,6 @@ import re
 from lxml.html import fromstring
 
 class OpenSubtitles():
-    langs = ["eng", "swe"]
     baseUrl = "http://www.opensubtitles.org/en/search2/sublanguageid"
     dlUrl ="http://www.opensubtitles.org"
     pattern = re.compile(r'\s+')
@@ -64,7 +63,7 @@ class OpenSubtitles():
         try:
             self.download(movies[int(choice)]["downloadUrl"], movies[int(choice)]["title"])
         except Exception, e: 
-            print "Error"
+            print "Error while saving file"
             print e
         
     def download(self, url, title):
