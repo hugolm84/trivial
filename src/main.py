@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (C) 2011-2013 Hugo Lindström
-# Copyright (C) 2011-2013 Martin Törnqvist
+# Copyright (C) 2013 Hugo Lindström
+# Copyright (C) 2013 Martin Törnqvist
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
