@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from OpenSubtitles import OpenSubtitles
+from SubtitleSearch import SubtitleSearch
 if __name__ == '__main__':
-    sub = OpenSubtitles()
-    sub.getSubtitle("Mitt Liv som hund", "swe")
-    
-    
+    Subtitles = SubtitleSearch()
+    #Subtitles.getSubtitles({"query" : "Jack Reacher", "language" : "eng"})
+    Subtitles.getSubtitles({"query" : "Mitt liv som hund", "language" : "swe"})
