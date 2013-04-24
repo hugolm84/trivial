@@ -28,6 +28,7 @@ class SubtitleSearch():
 
     def getSubtitles(self, query = {}):
         self.__results = []
+        print query
         for spider in self.__spiders:
             self.__results.append(spider.getSubtitle(query))
         self.printResults()

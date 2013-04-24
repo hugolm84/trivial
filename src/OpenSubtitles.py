@@ -32,7 +32,9 @@ class OpenSubtitles(SubtitleBase):
     def parseHtml(self, html, movies = []):
         table = html.xpath("//tr[contains(@id, 'name')]")    
         if len(table) is 0:
-            movies.append(self.parseSingleItem(html))
+            data = self.parseSingleItem(html)
+            if len(data) :
+                movies.append(self.parseSingleItem(html))
             return movies
     
         for idx, item in enumerate(table):
@@ -46,8 +48,11 @@ class OpenSubtitles(SubtitleBase):
         return movies;
 
     def parseSingleItem(self, html):
-        item = html.xpath("//h1/a[@title='Download']");
-        return {"title" : item[0].text_content(), "download" : item[0].attrib["href"]};   
+        try:
+            item = html.xpath("//h1/a[@title='Download']");
+            return {"title" : item[0].text_content(), "download" : item[0].attrib["href"]};   
+        except IndexError:
+            return {}
 
     def parseMovieName(self, item):
         movieItem = item.find("strong")[0]
